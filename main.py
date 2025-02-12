@@ -4,8 +4,26 @@ import pandas as pd
 import openai
 import os
 import chardet
+from google.cloud import secretmanager
 
-openai_api_key=os.getenv("OPENAI_API_KEY")
+# ✅ Function to retrieve secrets from Google Cloud Secret Manager
+def get_secret(secret_name):
+    """Fetches a secret from Google Cloud Secret Manager."""
+    client = secretmanager.SecretManagerServiceClient()
+    project_id = "nudgeme-450123"  # Ensure this is the correct project ID
+    secret_path = f"projects/{project_id}/secrets/{secret_name}/versions/latest"
+
+    try:
+        response = client.access_secret_version(request={"name": secret_path})
+        return response.payload.data.decode("UTF-8")
+    except Exception as e:
+        print(f"❌ Error retrieving secret '{secret_name}': {e}")
+        return None
+
+openai_api_key = get_secret("OPENAI_API_KEY")
+
+if not openai_api_key:
+    raise ValueError("❌ OPENAI API Key not found in Secret Manager!")
 
 client = openai.OpenAI(api_key=openai_api_key)
 app = Flask(__name__, template_folder=".")
