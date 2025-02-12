@@ -3,7 +3,7 @@ name: Deploy to Google Cloud Run
 on:
   push:
     branches:
-      - main  # Change to your default branch if needed
+      - main 
 
 jobs:
   deploy:
@@ -20,16 +20,16 @@ jobs:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
     - name: Configure gcloud CLI
-      run: gcloud config set project nudgeme-450123  # ✅ Updated Project ID
+      run: gcloud config set project nudgeme-450123
 
     - name: Build and Push Docker Image
       run: |
-        gcloud builds submit --tag gcr.io/nudgeme-450123/flask-app  # ✅ Updated Project ID
+        gcloud builds submit --tag us-central1-docker.pkg.dev/nudgeme-450123/flask-repo/flask-app 
 
     - name: Deploy to Cloud Run
       run: |
         gcloud run deploy flask-app \
-          --image gcr.io/nudgeme-450123/flask-app \
+          --image us-central1-docker.pkg.dev/nudgeme-450123/flask-repo/flask-app \
           --platform managed \
-          --region us-central1 \  # ✅ Change this if your Cloud Run is in another region
+          --region us-central1 \
           --allow-unauthenticated
