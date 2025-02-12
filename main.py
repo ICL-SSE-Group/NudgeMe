@@ -10,6 +10,7 @@ import json
 # ✅ Load environment variables
 load_dotenv()
 
+
 # ✅ Function to set up Google Cloud authentication from GitHub Secrets
 def setup_google_auth():
     """Sets up Google authentication using GitHub Secrets."""
@@ -128,7 +129,7 @@ def analyze_expenses(file_path):
 # ✅ Flask routes
 @app.route("/", methods=["GET", "POST"])
 def index():
-    analysis = "Upload your CSV file to analyze your expenses."
+    analysis = "Upload your CSV file to analyse your expenses."
 
     if request.method == "POST":
         file = request.files.get("file")
