@@ -17,38 +17,66 @@ def create_table():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """))
-        conn.commit()
     print("✅ Table 'transactions' is ready.")
 
 def insert_csv_data(file_path, user_id):
     try:
+        # ✅ Load CSV file and normalize column names
         df = pd.read_csv(file_path)
-        df.columns = df.columns.str.lower().str.strip()  # Normalize column names
+        df.columns = df.columns.str.lower().str.strip()
 
+        # ✅ Ensure the required columns are present
         required_columns = {"date", "expense name", "amount", "expense type"}
         if not required_columns.issubset(df.columns):
             return "❌ Error: CSV must contain 'Date', 'Expense Name', 'Amount', 'Expense Type'."
 
+        # ✅ Format the data
         df["date"] = pd.to_datetime(df["date"], format="%m/%d/%Y").dt.date
         df["amount"] = df["amount"].replace(r'[\$,]', '', regex=True).astype(float)
 
-        with engine.connect() as conn:
+        # ✅ Insert transactions into the database (avoid duplicates)
+        with engine.begin() as conn:
+            inserted_count = 0
+
             for _, row in df.iterrows():
-                conn.execute(
+                date = row["date"]
+                expense_name = row["expense name"]
+                amount = row["amount"]
+                expense_type = row["expense type"]
+
+                # ✅ Check if transaction already exists
+                existing_transaction = conn.execute(
                     text("""
-                        INSERT INTO transactions (date, expense_name, amount, expense_type, user_id)
-                        VALUES (:date, :expense_name, :amount, :expense_type, :user_id)
+                        SELECT id FROM transactions
+                        WHERE date = :date AND expense_name = :expense_name
+                        AND amount = :amount AND user_id = :user_id
                     """),
                     {
-                        "date": row["date"],
-                        "expense_name": row["expense name"],
-                        "amount": row["amount"],
-                        "expense_type": row["expense type"],
-                        "user_id": user_id  # ✅ Ensure user_id is passed dynamically
+                        "date": date,
+                        "expense_name": expense_name,
+                        "amount": amount,
+                        "user_id": user_id
                     }
-                )
-            conn.commit()
-        return "✅ CSV data inserted successfully!"
+                ).fetchone()
+
+                # ✅ Insert only if transaction does not exist
+                if not existing_transaction:
+                    conn.execute(
+                        text("""
+                            INSERT INTO transactions (date, expense_name, amount, expense_type, user_id, created_at)
+                            VALUES (:date, :expense_name, :amount, :expense_type, :user_id, NOW())
+                        """),
+                        {
+                            "date": date,
+                            "expense_name": expense_name,
+                            "amount": amount,
+                            "expense_type": expense_type,
+                            "user_id": user_id
+                        }
+                    )
+                    inserted_count += 1
+                    
+        return f"✅ {inserted_count} new transactions added." if inserted_count else "No new transactions were inserted."
 
     except Exception as e:
         return f"❌ Error inserting data: {str(e)}"
