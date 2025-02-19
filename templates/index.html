@@ -198,7 +198,7 @@
                     <th>Amount ($)</th>
                     <th>Expense Type</th>
                 </tr>
-                {% for transaction in transactions %}  <!-- Only show last 5 rows -->
+                {% for transaction in transactions[:5] %}  <!-- Only show last 5 rows -->
                 <tr>
                     <td>{{ transaction[0] }}</td>
                     <td>{{ transaction[1] }}</td>
