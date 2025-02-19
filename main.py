@@ -1,4 +1,5 @@
 from flask import Flask, request, render_template
+from database import insert_csv_data, fetch_transactions
 from dotenv import load_dotenv
 import pandas as pd
 import openai
@@ -129,17 +130,25 @@ def analyze_expenses(file_path):
 # ✅ Flask routes
 @app.route("/", methods=["GET", "POST"])
 def index():
-    analysis = "Upload your CSV file to analyse your expenses."
+    message = "Upload your CSV file to analyse your expenses."
+    analysis = ""
 
     if request.method == "POST":
         file = request.files.get("file")
         if not file:
-            return "No file uploaded"
+            return "❌ No file uploaded"
+        
         file_path = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(file_path)
+
+        message = insert_csv_data(file_path, user_id=1)
+
         analysis = analyze_expenses(file_path)
     
-    return render_template("index.html", analysis=analysis)
+    all_transactions = fetch_transactions()
+    transactions = all_transactions[-5:] if len(all_transactions) >= 5 else all_transactions
+    
+    return render_template("index.html", message=message, analysis=analysis, transactions=transactions)
 
 # ✅ Run Flask app
 if __name__ == "__main__":
