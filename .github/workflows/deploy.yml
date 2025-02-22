@@ -3,7 +3,7 @@ name: Deploy to Google Cloud Run
 on:
   push:
     branches:
-      - main 
+      - main
 
 jobs:
   deploy:
@@ -22,11 +22,12 @@ jobs:
     - name: Configure gcloud CLI
       run: gcloud config set project nudgeme-450123
 
-    - name: Build and Push Docker Image
+    # --- OLD MONOLITHIC APP (Keep Running) ---
+    - name: Build and Push Old Flask App
       run: |
         gcloud builds submit --tag us-central1-docker.pkg.dev/nudgeme-450123/flask-repo/flask-app 
 
-    - name: Deploy to Cloud Run
+    - name: Deploy Old Flask App to Cloud Run
       run: |
         gcloud run deploy flask-app \
           --image us-central1-docker.pkg.dev/nudgeme-450123/flask-repo/flask-app \
@@ -34,6 +35,34 @@ jobs:
           --region us-central1 \
           --allow-unauthenticated
 
+    # --- AI SERVICE ---
+    - name: Build and Push AI Service
+      run: |
+        cd ai_service
+        gcloud builds submit --tag us-central1-docker.pkg.dev/nudgeme-450123/my-docker-repo/ai-service
 
+    - name: Deploy AI Service to Cloud Run
+      run: |
+        gcloud run deploy ai-service \
+          --image us-central1-docker.pkg.dev/nudgeme-450123/my-docker-repo/ai-service \
+          --platform managed \
+          --region us-central1 \
+          --allow-unauthenticated \
+          --port 5001
+
+    # --- UPLOAD SERVICE ---
+    - name: Build and Push Upload Service
+      run: |
+        cd upload_service
+        gcloud builds submit --tag us-central1-docker.pkg.dev/nudgeme-450123/my-docker-repo/upload-service
+
+    - name: Deploy Upload Service to Cloud Run
+      run: |
+        gcloud run deploy upload-service \
+          --image us-central1-docker.pkg.dev/nudgeme-450123/my-docker-repo/upload-service \
+          --platform managed \
+          --region us-central1 \
+          --allow-unauthenticated \
+          --port 5000
 
 
