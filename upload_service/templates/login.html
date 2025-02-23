@@ -2,40 +2,149 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login & Upload</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+        input, button {
+            margin: 10px;
+            padding: 10px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #message {
+            margin-top: 15px;
+            font-weight: bold;
+            color: red;
+        }
+    </style>
 </head>
 <body>
     <h2>Login</h2>
-    <form id="login-form" method="POST">
-        <input type="text" id="username" name="username" placeholder="Username" required><br>
-        <input type="password" id="password" name="password" placeholder="Password" required><br>
-        <button type="submit">Login</button>
-    </form>
-    <p id="error-message" style="color: red;"></p>
 
-    <p>Don't have an account? <a href="/register">Sign up here</a></p>
+    <div id="login-section">
+        <form id="login-form">
+            <input type="text" id="username" name="username" placeholder="Username" required><br>
+            <input type="password" id="password" name="password" placeholder="Password" required><br>
+            <button type="submit">Login</button>
+        </form>
+        <p id="error-message" style="color: red;"></p>
+        <p>Don't have an account? <a href="/register">Sign up here</a></p>
+    </div>
+
+    <div id="upload-section" class="hidden">
+        <hr>
+        <h2>Upload Expense Transactions</h2>
+        <p id="welcome-message"></p>
+        <form id="upload-form" action="/" method="POST" enctype="multipart/form-data">
+            <input type="file" id="file" name="file" required><br>
+            <button type="submit">Upload</button>
+        </form>
+        <p id="message"></p>
+        <button onclick="logout()">Logout</button>
+    </div>
 
     <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const userId = localStorage.getItem("user_id");
+            if (userId) {
+                showUploadSection(userId);
+            }
+        });
+
+        // ✅ Handle Login
         document.getElementById("login-form").addEventListener("submit", async function(event) {
-            event.preventDefault(); // Prevent page reload
+            event.preventDefault();
             
             const username = document.getElementById("username").value;
             const password = document.getElementById("password").value;
 
-            const response = await fetch("/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({ username, password }) // ✅ Form encoding fix
-            });
+            try {
+                const response = await fetch("/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: new URLSearchParams({ username, password })
+                });
 
-            if (response.ok) {
-                localStorage.setItem("user_id", username); // ✅ Store username for session tracking
-                window.location.href = "/dashboard";  // ✅ Redirect to dashboard
-            } else {
-                const data = await response.text();
-                document.getElementById("error-message").textContent = data;
+                if (response.ok) {
+                    localStorage.setItem("user_id", username);
+                    showUploadSection(username);
+                } else {
+                    const errorMessage = await response.text();
+                    document.getElementById("error-message").textContent = errorMessage;
+                }
+            } catch (error) {
+                console.error("Login error:", error);
+                document.getElementById("error-message").textContent = "❌ Error logging in.";
             }
         });
+
+        // ✅ Handle File Upload
+        document.getElementById("upload-form").addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const fileInput = document.getElementById("file");
+            const userId = localStorage.getItem("user_id");
+
+            if (!userId) {
+                document.getElementById("message").textContent = "❌ Please log in before uploading a file.";
+                return;
+            }
+
+            if (fileInput.files.length === 0) {
+                document.getElementById("message").textContent = "❌ Please select a file to upload.";
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+
+            try {
+                const response = await fetch("/", {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (response.ok) {
+                    window.location.href = "/dashboard";  // Redirect after successful upload
+                } else {
+                    const errorMessage = await response.text();
+                    document.getElementById("message").textContent = "❌ Upload failed: " + errorMessage;
+                }
+            } catch (error) {
+                console.error("Error uploading file:", error);
+                document.getElementById("message").textContent = "❌ Error uploading file.";
+            }
+        });
+
+        // ✅ Show Upload Section After Login
+        function showUploadSection(username) {
+            document.getElementById("login-section").classList.add("hidden");
+            document.getElementById("upload-section").classList.remove("hidden");
+            document.getElementById("welcome-message").textContent = `Welcome, ${username}! You can now upload a file.`;
+        }
+
+        // ✅ Logout Function
+        function logout() {
+            localStorage.removeItem("user_id");
+            document.getElementById("login-section").classList.remove("hidden");
+            document.getElementById("upload-section").classList.add("hidden");
+            document.getElementById("welcome-message").textContent = "";
+        }
     </script>
 </body>
 </html>

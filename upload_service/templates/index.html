@@ -2,7 +2,36 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upload File</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        #upload-form {
+            margin-top: 20px;
+        }
+        input, button {
+            margin: 10px;
+            padding: 10px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #message {
+            margin-top: 15px;
+            font-weight: bold;
+            color: red;
+        }
+    </style>
 </head>
 <body>
     <h2>Upload Expense Transactions</h2>
@@ -12,8 +41,8 @@
         <button onclick="logout()">Logout</button>
     </div>
 
-    <form id="upload-form" enctype="multipart/form-data">
-        <input type="file" id="file" required><br>
+    <form id="upload-form" action="/" method="POST" enctype="multipart/form-data">
+        <input type="file" id="file" name="file" required><br>
         <button type="submit">Upload</button>
     </form>
     <p id="message"></p>
@@ -32,18 +61,30 @@
             event.preventDefault();
 
             const fileInput = document.getElementById("file");
+            if (fileInput.files.length === 0) {
+                document.getElementById("message").textContent = "❌ Please select a file to upload.";
+                return;
+            }
+
             const formData = new FormData();
             formData.append("file", fileInput.files[0]);
-            formData.append("user_id", userId);  // Include user_id in request
 
-            const response = await fetch("/", {
-                method: "POST",
-                body: formData
-            });
+            try {
+                const response = await fetch("/", {
+                    method: "POST",
+                    body: formData
+                });
 
-            const data = await response.text();
-            document.getElementById("message").innerHTML = data;
-            window.location.href = "/dashboard";  // Redirect to dashboard after upload
+                if (response.ok) {
+                    window.location.href = "/dashboard";  // Redirect after successful upload
+                } else {
+                    const errorMessage = await response.text();
+                    document.getElementById("message").textContent = "❌ Upload failed: " + errorMessage;
+                }
+            } catch (error) {
+                console.error("Error uploading file:", error);
+                document.getElementById("message").textContent = "❌ Error uploading file.";
+            }
         });
 
         // ✅ Logout function

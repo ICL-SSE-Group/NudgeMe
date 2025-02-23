@@ -71,29 +71,49 @@ def upload_file():
     user_id = session["user_id"]
 
     if not file:
-        flash(" No file uploaded")
+        flash("❌ No file uploaded")
         return redirect(request.url)
 
+    # Ensure the uploaded file has a proper CSV extension
+    if not file.filename.endswith(".csv"):
+        flash("❌ Invalid file format. Please upload a CSV file.")
+        return redirect(request.url)
+
+    # Save the file temporarily
+    upload_folder = "uploads"
+    os.makedirs(upload_folder, exist_ok=True)  # Ensure upload folder exists
+    file_path = os.path.join(upload_folder, file.filename)
+    file.save(file_path)
+
+    # Process CSV file
+    with open(file_path, newline="", encoding="utf-8") as csvfile:
+        reader = csv.DictReader(csvfile)
+        with psycopg2.connect(DB_CONN) as conn:
+            with conn.cursor() as cur:
+                for row in reader:
+                    try:
+                        amount = float(row["Amount"].replace("$", "").strip())  # Convert amount to float
+                    except ValueError:
+                        flash(f"❌ Invalid amount format: {row['Amount']}")
+                        return redirect(request.url)
+
+                    cur.execute(
+                        """
+                        INSERT INTO transactions (user_id, date, expense_name, amount, expense_type)
+                        VALUES (%s, %s, %s, %s, %s)
+                        """,
+                        (user_id, row["Date"], row["Expense Name"], amount, row["Expense Type"]),
+                    )
+
+    # Store file in uploads table
     with psycopg2.connect(DB_CONN) as conn:
         with conn.cursor() as cur:
-            reader = csv.DictReader(file.read().decode("utf-8").splitlines())
+            cur.execute(
+                "INSERT INTO uploads (user_id, file_name, storage_path) VALUES (%s, %s, %s)",
+                (user_id, file.filename, file_path),
+            )
 
-            for row in reader:
-                try:
-                    amount = float(row["Amount"].replace("$", "").strip())  # Convert amount to float
-                except ValueError:
-                    flash(f" Invalid amount format: {row['Amount']}")
-                    return redirect(request.url)
-
-                cur.execute(
-                    """
-                    INSERT INTO transactions (user_id, date, expense_name, amount, expense_type)
-                    VALUES (%s, %s, %s, %s, %s)
-                    """,
-                    (user_id, row["Date"], row["Expense Name"], amount, row["Expense Type"]),
-                )
-
-    flash(" File uploaded and transactions stored in database.")
+    flash("✅ File uploaded and transactions stored in database.")
     return redirect("/dashboard")
 
 
