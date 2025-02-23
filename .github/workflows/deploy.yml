@@ -22,19 +22,6 @@ jobs:
     - name: Configure gcloud CLI
       run: gcloud config set project nudgeme-450123
 
-    # --- OLD MONOLITHIC APP (Keep Running) ---
-    - name: Build and Push Old Flask App
-      run: |
-        gcloud builds submit --tag us-central1-docker.pkg.dev/nudgeme-450123/flask-repo/flask-app 
-
-    - name: Deploy Old Flask App to Cloud Run
-      run: |
-        gcloud run deploy flask-app \
-          --image us-central1-docker.pkg.dev/nudgeme-450123/flask-repo/flask-app \
-          --platform managed \
-          --region us-central1 \
-          --allow-unauthenticated
-
     # --- AI SERVICE ---
     - name: Build and Push AI Service
       run: |
