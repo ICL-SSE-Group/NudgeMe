@@ -190,6 +190,23 @@
             margin-top: 8px;
             text-align: center;
         }
+
+        /* Add success message styles */
+        .success-message {
+            color: #166534;
+            font-size: 14px;
+            margin-top: 8px;
+            text-align: center;
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .success-message i {
+            color: #22c55e;
+            margin-right: 8px;
+        }
     </style>
 </head>
 <body>
@@ -271,15 +288,15 @@
 
                 if (response.ok) {
                     localStorage.setItem("user_id", username);
-                    errorMessage.textContent = "✅ Login successful! Redirecting...";
-                    errorMessage.classList.add("show");
+                    errorMessage.className = "success-message";
+                    errorMessage.innerHTML = '<i class="fas fa-check-circle"></i> Login successful! Redirecting...';
                     setTimeout(() => {
                         window.location.href = "/";
                     }, 1000);
                 } else {
                     const error = await response.text();
-                    errorMessage.textContent = "❌ " + error;
-                    errorMessage.classList.add("show");
+                    errorMessage.className = "error-message";
+                    errorMessage.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + error;
                     loginButton.disabled = false;
                     loginButton.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
                 }

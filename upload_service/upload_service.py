@@ -219,6 +219,24 @@ def view_file(filename):
         print(f" No database record found for file: {filename}")
         return " File record not found", 404
 
+@app.route('/delete-file/<filename>', methods=['DELETE'])
+def delete_file(filename):
+    try:
+        # Get user ID from session or request
+        user_id = request.headers.get('X-User-Id') or 'default_user'
+        
+        # Create user-specific upload folder path
+        user_upload_folder = os.path.join(app.config['UPLOAD_FOLDER'], user_id)
+        file_path = os.path.join(user_upload_folder, filename)
+
+        # Check if file exists and delete it
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            return '', 204  # Success with no content
+        return 'File not found', 404
+    except Exception as e:
+        print(f"Error deleting file: {str(e)}")  # Log the error
+        return str(e), 500
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)

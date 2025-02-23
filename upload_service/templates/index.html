@@ -225,6 +225,46 @@
             width: 0%;
             transition: width 0.3s ease;
         }
+
+        /* Add these new styles */
+        .upload-success {
+            display: none;
+            background: white;
+            border: 1px solid var(--bg-dark);
+            color: var(--text-dark);
+            padding: 16px;
+            border-radius: 12px;
+            margin-top: 20px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .upload-success i {
+            color: var(--primary);
+            margin-right: 8px;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: var(--primary);
+        }
+
+        .success-message {
+            color: var(--text-dark);
+            font-size: 14px;
+            margin-top: 8px;
+            text-align: center;
+            background: white;
+            border: 1px solid var(--bg-dark);
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .success-message i {
+            color: var(--primary);
+            margin-right: 8px;
+        }
     </style>
 </head>
 <body>
@@ -254,12 +294,9 @@
                     <label for="file" class="file-label">
                         <i class="fas fa-file-csv"></i> Choose File
                     </label>
-                    <input type="file" id="file" name="file" accept=".csv" required>
+                    <input type="file" id="file" name="file" accept=".csv" required onchange="updateFileName(this)">
                 </div>
                 <div id="selected-file" class="selected-file">No file selected</div>
-                <div class="progress-bar">
-                    <div class="progress-bar-fill"></div>
-                </div>
             </div>
 
             <div style="text-align: center;">
@@ -268,6 +305,7 @@
                 </button>
             </div>
         </form>
+        <div id="upload-success" class="upload-success"></div>
         <p id="message"></p>
     </div>
 
@@ -313,8 +351,9 @@
         function handleDrop(e) {
             const dt = e.dataTransfer;
             const files = dt.files;
-            document.getElementById('file').files = files;
-            updateFileName(document.getElementById('file'));
+            const fileInput = document.getElementById('file');
+            fileInput.files = files;
+            updateFileName(fileInput);
         }
 
         // Enhanced file upload handling
@@ -322,46 +361,34 @@
             event.preventDefault();
 
             const fileInput = document.getElementById("file");
-            const progressBar = document.querySelector('.progress-bar');
-            const progressBarFill = document.querySelector('.progress-bar-fill');
             const uploadButton = document.getElementById('upload-button');
             const message = document.getElementById('message');
+            const successDiv = document.getElementById('upload-success');
 
             if (fileInput.files.length === 0) {
                 showMessage("❌ Please select a file to upload.");
                 return;
             }
 
+            const fileName = fileInput.files[0].name;
             const formData = new FormData();
             formData.append("file", fileInput.files[0]);
 
             try {
                 uploadButton.disabled = true;
                 uploadButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
-                progressBar.style.display = 'block';
-
-                // Simulate upload progress
-                let progress = 0;
-                const progressInterval = setInterval(() => {
-                    progress += 5;
-                    if (progress <= 90) {
-                        progressBarFill.style.width = `${progress}%`;
-                    }
-                }, 200);
 
                 const response = await fetch("/", {
                     method: "POST",
                     body: formData
                 });
 
-                clearInterval(progressInterval);
-                progressBarFill.style.width = '100%';
-
                 if (response.ok) {
-                    showMessage("✅ Upload successful! Redirecting...");
+                    successDiv.innerHTML = `<i class="fas fa-check-circle"></i> Successfully uploaded <span class="file-name">${fileName}</span>`;
+                    successDiv.style.display = 'block';
                     setTimeout(() => {
                         window.location.href = "/dashboard";
-                    }, 1000);
+                    }, 2000);
                 } else {
                     const errorMessage = await response.text();
                     showMessage("❌ Upload failed: " + errorMessage);
@@ -385,7 +412,11 @@
 
         function updateFileName(input) {
             const fileName = input.files[0]?.name || 'No file selected';
-            document.getElementById('selected-file').textContent = fileName;
+            const selectedFileDiv = document.getElementById('selected-file');
+            selectedFileDiv.textContent = fileName;
+            selectedFileDiv.style.color = input.files[0] ? 'var(--primary)' : 'var(--text-light)';
+            // Reset success message when new file is selected
+            document.getElementById('upload-success').style.display = 'none';
         }
 
         // Logout function
