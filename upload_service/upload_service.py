@@ -28,22 +28,28 @@ def login_page():
 
 @app.route("/login", methods=["POST"])
 def login():
-    """Handles user login and session management."""
+    """Handles user login and session management, creating a new user if needed."""
     username = request.form.get("username")
-    password = request.form.get("password")
 
     with psycopg2.connect(DB_CONN) as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, password FROM users WHERE username = %s", (username,))
+            # Check if the username already exists
+            cur.execute("SELECT id FROM users WHERE username = %s", (username,))
             result = cur.fetchone()
 
-    if result:
-        session["user_id"] = result[0]  # Store user session
-        flash("✅ Login successful!")
-        return redirect("/")
-    else:
-        flash(" Invalid username or password.")
-        return redirect("/login")
+            if result:
+                # Existing user found, log them in
+                user_id = result[0]
+            else:
+                # New user - insert into the database
+                cur.execute("INSERT INTO users (username) VALUES (%s) RETURNING id", (username,))
+                user_id = cur.fetchone()[0]
+                conn.commit()  # Commit new user creation
+
+    session["user_id"] = user_id  # Store unique user ID in session
+    flash("✅ Login successful!")
+    return redirect("/")
+
 
 @app.route("/logout")
 def logout():
