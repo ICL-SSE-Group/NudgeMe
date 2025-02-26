@@ -4,11 +4,11 @@ import json
 import sys
 import os
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Adjust this import to match your actual path structure
 # This assumes ai_service.py is in the same directory as this test file
-from ai_service.ai_service import app
+from ai_service import app
 
 class TestAIService(unittest.TestCase):
     def setUp(self):
