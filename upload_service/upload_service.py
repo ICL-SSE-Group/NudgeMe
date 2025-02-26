@@ -221,19 +221,39 @@ def view_file(filename):
 
 @app.route('/delete-file/<filename>', methods=['DELETE'])
 def delete_file(filename):
-    try:
-        # Get user ID from session or request
-        user_id = request.headers.get('X-User-Id') or 'default_user'
-        
-        # Create user-specific upload folder path
-        user_upload_folder = os.path.join(app.config['UPLOAD_FOLDER'], user_id)
-        file_path = os.path.join(user_upload_folder, filename)
+    if "user_id" not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    user_id = session["user_id"]
 
-        # Check if file exists and delete it
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            return '', 204  # Success with no content
-        return 'File not found', 404
+    try:
+        with psycopg2.connect(DB_CONN) as conn:
+            with conn.cursor() as cur:
+                # Fetch file path from the database
+                cur.execute(
+                    "SELECT storage_path FROM uploads WHERE user_id = %s AND file_name = %s",
+                    (user_id, filename),
+                )
+                result = cur.fetchone()
+
+                if not result:
+                    return jsonify({"error": "File not found"}), 404
+
+                file_path = result[0]
+
+                # Delete file from filesystem
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                
+                # Remove database record
+                cur.execute(
+                    "DELETE FROM uploads WHERE user_id = %s AND file_name = %s",
+                    (user_id, filename),
+                )
+                conn.commit()
+
+        return jsonify({"success": True}), 200
+    
     except Exception as e:
         print(f"Error deleting file: {str(e)}")  # Log the error
         return str(e), 500
