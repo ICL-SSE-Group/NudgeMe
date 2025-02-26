@@ -24,6 +24,11 @@ jobs:
         gcloud config set project nudgeme-450123
         gcloud auth configure-docker us-central1-docker.pkg.dev
 
+    - name: Install gke-gcloud-auth-plugin
+      run: |
+        gcloud components install gke-gcloud-auth-plugin
+        echo "export USE_GKE_GCLOUD_AUTH_PLUGIN=True" >> $GITHUB_ENV
+
     # --- BUILD & PUSH AI SERVICE ---
     - name: Build and Push AI Service
       run: |
@@ -45,11 +50,11 @@ jobs:
 
     - name: Deploy AI Service to Kubernetes
       run: |
-        kubectl set image deployment/ai-service ai-service=us-central1-docker.pkg.dev/nudgeme-450123/my-docker-repo/ai-service:latest --record
+        kubectl set image deployment/ai-service ai-service=us-central1-docker.pkg.dev/nudgeme-450123/my-docker-repo/ai-service:latest
 
     - name: Deploy Upload Service to Kubernetes
       run: |
-        kubectl set image deployment/upload-service upload-service=us-central1-docker.pkg.dev/nudgeme-450123/my-docker-repo/upload-service:latest --record
+        kubectl set image deployment/upload-service upload-service=us-central1-docker.pkg.dev/nudgeme-450123/my-docker-repo/upload-service:latest
 
     - name: Verify Deployments
       run: |
