@@ -1,4 +1,4 @@
-name: Deploy to Google Kubernetes Engine (GKE)
+name: Deploy to Google Cloud Run
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   deploy:
-    name: Deploy to Kubernetes
+    name: Deploy to Cloud Run
     runs-on: ubuntu-latest
 
     steps:
@@ -22,41 +22,40 @@ jobs:
     - name: Configure gcloud CLI
       run: |
         gcloud config set project nudgeme-450123
-        gcloud auth configure-docker us-central1-docker.pkg.dev
-
-    - name: Install gke-gcloud-auth-plugin
-      run: |
-        gcloud components install gke-gcloud-auth-plugin
-        echo "export USE_GKE_GCLOUD_AUTH_PLUGIN=True" >> $GITHUB_ENV
+        gcloud auth configure-docker
 
     # --- BUILD & PUSH AI SERVICE ---
     - name: Build and Push AI Service
       run: |
         cd ai_service
-        docker build -t us-central1-docker.pkg.dev/nudgeme-450123/my-docker-repo/ai-service:latest .
-        docker push us-central1-docker.pkg.dev/nudgeme-450123/my-docker-repo/ai-service:latest
+        docker build -t gcr.io/nudgeme-450123/ai-service:latest .
+        docker push gcr.io/nudgeme-450123/ai-service:latest
 
     # --- BUILD & PUSH UPLOAD SERVICE ---
     - name: Build and Push Upload Service
       run: |
         cd upload_service
-        docker build -t us-central1-docker.pkg.dev/nudgeme-450123/my-docker-repo/upload-service:latest .
-        docker push us-central1-docker.pkg.dev/nudgeme-450123/my-docker-repo/upload-service:latest
+        docker build -t gcr.io/nudgeme-450123/upload-service:latest .
+        docker push gcr.io/nudgeme-450123/upload-service:latest
 
-    # --- UPDATE KUBERNETES DEPLOYMENTS ---
-    - name: Get Kubernetes Cluster Credentials
+    # --- DEPLOY SERVICES TO CLOUD RUN ---
+    - name: Deploy AI Service to Cloud Run
       run: |
-        gcloud container clusters get-credentials finance-cluster --region us-central1
+        gcloud run deploy ai-service \
+          --image gcr.io/nudgeme-450123/ai-service:latest \
+          --platform managed \
+          --region us-central1 \
+          --allow-unauthenticated
 
-    - name: Deploy AI Service to Kubernetes
+    - name: Deploy Upload Service to Cloud Run
       run: |
-        kubectl set image deployment/ai-service ai-service=us-central1-docker.pkg.dev/nudgeme-450123/my-docker-repo/ai-service:latest
+        gcloud run deploy upload-service \
+          --image gcr.io/nudgeme-450123/upload-service:latest \
+          --platform managed \
+          --region us-central1 \
+          --allow-unauthenticated
 
-    - name: Deploy Upload Service to Kubernetes
-      run: |
-        kubectl set image deployment/upload-service upload-service=us-central1-docker.pkg.dev/nudgeme-450123/my-docker-repo/upload-service:latest
-
+    # --- VERIFY DEPLOYMENTS ---
     - name: Verify Deployments
       run: |
-        kubectl get pods
-        kubectl get services
+        gcloud run services list --platform managed --region us-central1
