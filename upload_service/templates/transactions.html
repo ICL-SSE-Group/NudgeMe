@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NudgeMe - Dashboard</title>
+    <title>NudgeMe - Transactions</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/style.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
@@ -348,136 +349,44 @@
         </button>
     </nav>
 
-    <a href="/" class="back-link">
-        <i class="fas fa-arrow-left"></i> Back to Upload
-    </a>
-
     <div class="container">
         <div class="dashboard-header">
-            <h1>Your Dashboard</h1>
-            <p>View and analyze your uploaded expense files</p>
+            <h1>All Transactions</h1>
+            <p>Here are all your uploaded transactions.</p>
         </div>
 
         <div class="card">
-            <h2>
-                <i class="fas fa-file-upload"></i>
-                Uploaded Files
-            </h2>
             <table>
                 <thead>
                     <tr>
-                        <th>Filename</th>
-                        <th>Actions</th>
+                        <th>Date</th>
+                        <th>Expense Name</th>
+                        <th>Amount ($)</th>
+                        <th>Expense Type</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for file in files %}
-                    <tr id="file-row-{{ file[0] }}">
-                        <td>{{ file[0] }}</td>
-                        <td class="action-buttons">
-                            <div class="action-group">
-                                <a href="/view-file/{{ file[0] }}" target="_blank" class="view-link">
-                                    <i class="fas fa-eye"></i> View File
-                                </a>
-                                <button onclick="fetchAnalysis('{{ file[0] }}')" class="action-btn">
-                                    <i class="fas fa-robot"></i> View AI Analysis
-                                </button>
-                            </div>
-                            <button onclick="deleteFile('{{ file[0] }}')" class="delete-btn">
-                                <i class="fas fa-trash"></i> Delete
-                            </button>
-                        </td>
+                    {% for transaction in transactions %}
+                    <tr>
+                        <td>{{ transaction[0] }}</td>
+                        <td>{{ transaction[1] }}</td>
+                        <td>{{ transaction[2] }}</td>
+                        <td>{{ transaction[3] }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
 
-        <div class="card">
-            <h2>
-                <i class="fas fa-chart-bar"></i>
-                AI Analysis
-            </h2>
-            <div id="ai-analysis" class="analysis-section">
-                Click "View AI Analysis" on any file to see insights.
-            </div>
-        </div>
-
-        <div class="card center-content">
-            <h2><i class="fas fa-list"></i> View All Transactions</h2>
-            <div class="button-container">
-                <a href="/transactions" class="action-btn">
-                    <i class="fas fa-database"></i> View Transactions
-                </a>
-            </div>
-        </div>               
+        <a href="/dashboard" class="back-btn">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
     </div>
 
     <script>
         function logout() {
             localStorage.removeItem("user_id");
             window.location.href = "/login";
-        }
-
-        function fetchAnalysis(filename) {
-            const analysisSection = document.getElementById("ai-analysis");
-            analysisSection.className = 'analysis-section loading';
-            analysisSection.textContent = 'Analyzing your expenses...';
-
-            fetch(`/get-analysis/${filename}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.analysis) {
-                        analysisSection.className = 'analysis-section';
-                        // Format the analysis text
-                        const formattedAnalysis = data.analysis
-                            .replace(/\*\*(.*?)\*\*/g, '<span class="highlight">$1</span>')
-                            .replace(/^# (.*?)$/gm, '<div class="section-title">$1</div>')
-                            .replace(/^\* (.*?)$/gm, '<li>$1</li>')
-                            .replace(/(\d+\.?\d*%)/g, '<span class="highlight">$1</span>');
-                        
-                        analysisSection.innerHTML = formattedAnalysis;
-                    } else {
-                        analysisSection.className = 'analysis-section';
-                        analysisSection.innerHTML = '<div class="analysis-error"><i class="fas fa-exclamation-circle"></i> AI analysis failed.</div>';
-                    }
-                })
-                .catch(error => {
-                    analysisSection.className = 'analysis-section';
-                    analysisSection.innerHTML = '<div class="analysis-error"><i class="fas fa-exclamation-circle"></i> Error fetching analysis.</div>';
-                });
-        }
-
-        async function deleteFile(filename) {
-            if (!confirm(`Are you sure you want to delete ${filename}?`)) return;
-
-            try {
-                const response = await fetch(`/delete-file/${filename}`, {
-                method: 'DELETE',
-                credentials: 'same-origin',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-                });
-
-                if (response.ok) {
-                    // Remove the row dynamically
-                    const fileRow = document.getElementById(`file-row-${filename}`);
-                    if (fileRow) fileRow.remove();
-
-                    // Clear analysis section if relevant
-                    const analysisSection = document.getElementById("ai-analysis");
-                    if (analysisSection) {
-                    analysisSection.textContent = 'Click "View AI Analysis" on any file to see insights.';
-                    }
-                } else {
-                    const errorData = await response.json();
-                    alert(`Failed to delete file: ${errorData.error}`);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error deleting file');
-            }
         }
     </script>
 </body>

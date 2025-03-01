@@ -11,6 +11,7 @@ from decimal import Decimal
 load_dotenv()
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
+app.config['UPLOAD_FOLDER'] = 'uploads'
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev_secret_key")
 
 # Database connection
@@ -103,13 +104,18 @@ def upload_file():
                         flash(f"❌ Invalid amount format: {row['Amount']}")
                         return redirect(request.url)
 
-                    cur.execute(
-                        """
-                        INSERT INTO transactions (user_id, date, expense_name, amount, expense_type)
-                        VALUES (%s, %s, %s, %s, %s)
-                        """,
-                        (user_id, row["Date"], row["Expense Name"], amount, row["Expense Type"]),
-                    )
+                    try:
+                        cur.execute(
+                            """
+                            INSERT INTO transactions (user_id, date, expense_name, amount, expense_type, file_name)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                            ON CONFLICT (user_id, date, expense_name, amount, expense_type)
+                            DO UPDATE SET file_name = EXCLUDED.file_name;
+                            """,
+                            (user_id, row["Date"], row["Expense Name"], amount, row["Expense Type"], file.filename),
+                        )
+                    except psycopg2.Error as e:
+                        print(f"Duplicate transaction skipped: {e}")
 
     # Store file in uploads table
     with psycopg2.connect(DB_CONN) as conn:
@@ -152,10 +158,10 @@ def get_analysis(filename):
                 """
                 SELECT date, expense_name, amount, expense_type
                 FROM transactions
-                WHERE user_id = %s
+                WHERE user_id = %s AND file_name = %s
                 ORDER BY date ASC
                 """,
-                (user_id,),
+                (user_id,filename),
             )
             transactions = cur.fetchall()
 
@@ -221,22 +227,104 @@ def view_file(filename):
 
 @app.route('/delete-file/<filename>', methods=['DELETE'])
 def delete_file(filename):
-    try:
-        # Get user ID from session or request
-        user_id = request.headers.get('X-User-Id') or 'default_user'
-        
-        # Create user-specific upload folder path
-        user_upload_folder = os.path.join(app.config['UPLOAD_FOLDER'], user_id)
-        file_path = os.path.join(user_upload_folder, filename)
+    if "user_id" not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    user_id = session["user_id"]
 
-        # Check if file exists and delete it
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            return '', 204  # Success with no content
-        return 'File not found', 404
+    try:
+        with psycopg2.connect(DB_CONN) as conn:
+            with conn.cursor() as cur:
+                # Fetch file path from the database
+                cur.execute(
+                    "SELECT storage_path FROM uploads WHERE user_id = %s AND file_name = %s",
+                    (user_id, filename),
+                )
+                result = cur.fetchone()
+
+                if not result:
+                    return jsonify({"error": "File not found in database"}), 404
+
+                file_path = result[0]
+                print(f"🛠 Debug: Retrieved file path from DB - {file_path}")
+
+                # Remove associated transactions before deleting file record
+                cur.execute(
+                    """
+                    DELETE FROM transactions
+                    WHERE user_id = %s AND file_name = %s;
+                    """,
+                    (user_id, filename)
+                )
+
+                # Check if the file exists before attempting to delete it
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    print(f"✅ Debug: File {file_path} successfully deleted.")
+                else:
+                    print(f"❌ Debug: File {file_path} does NOT exist on server.")
+
+                # Remove database record
+                cur.execute(
+                    "DELETE FROM uploads WHERE user_id = %s AND file_name = %s",
+                    (user_id, filename),
+                )
+                conn.commit()
+                print(f"✅ Debug: Database record for {filename} deleted.")
+
+        return jsonify({"success": True}), 200
+    
     except Exception as e:
         print(f"Error deleting file: {str(e)}")  # Log the error
         return str(e), 500
+    
+@app.route('/view-transactions', methods=['GET'])
+def view_transactions():
+    if "user_id" not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    user_id = session["user_id"]
+
+    try:
+        with psycopg2.connect(DB_CONN) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT date, expense_name, amount, expense_type
+                    FROM transactions
+                    WHERE user_id = %s
+                    ORDER BY date ASC;
+                """, (user_id,))
+                transactions = cur.fetchall()
+        
+        return jsonify({"transactions": transactions}), 200
+    
+    except Exception as e:
+        print(f"Error fetching transactions: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+    
+@app.route('/transactions', methods=['GET'])
+def transactions():
+    if "user_id" not in session:
+        return redirect("/login")
+
+    user_id = session["user_id"]
+
+    try:
+        with psycopg2.connect(DB_CONN) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT date, expense_name, amount, expense_type
+                    FROM transactions
+                    WHERE user_id = %s
+                    ORDER BY date ASC;
+                """, (user_id,))
+                transactions = cur.fetchall()
+
+        return render_template("transactions.html", transactions=transactions)
+
+    except Exception as e:
+        print(f"Error fetching transactions: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
