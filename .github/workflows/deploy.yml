@@ -29,8 +29,6 @@ jobs:
 
       - name: Run Tests for upload_service
         working-directory: upload_service
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # Pass the secret
         run: |
           PYTHONPATH=./ python -m unittest upload_service_test.py
 
@@ -39,6 +37,7 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # Pass the secret
         run: |
+          export OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
           PYTHONPATH=./ python -m unittest ai_service_test.py
 
   deploy:
