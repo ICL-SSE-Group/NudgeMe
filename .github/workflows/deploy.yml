@@ -27,6 +27,13 @@ jobs:
         run: |
           pip install -r ai_service/requirements.txt
 
+      - name: Create .env File for AI Service
+        run: |
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" > ai_service/.env
+
+      - name: Verify .env Content (Debug Step)
+        run: cat ai_service/.env  # Debug step to verify .env is created
+
       - name: Run Tests for upload_service
         working-directory: upload_service
         run: |
@@ -34,8 +41,6 @@ jobs:
 
       - name: Run Tests for ai_service
         working-directory: ai_service
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # Pass the secret
         run: |
           export OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
           PYTHONPATH=./ python -m unittest ai_service_test.py

@@ -5,15 +5,16 @@ import openai
 import pandas as pd
 import json
 
-# ✅ Load environment variables
-load_dotenv()
+# Load environment variables
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
 
-# ✅ Fetch OpenAI API Key
+
+# Fetch OpenAI API Key
 openai_api_key = os.getenv("OPENAI_API_KEY")
 if not openai_api_key:
-    raise ValueError("❌ OPENAI API Key not found! Ensure it's set in .env or Google Secret Manager.")
+    raise ValueError("OPENAI API Key not found! Ensure it's set in .env or Google Secret Manager.")
 
-# ✅ Initialize OpenAI Client
+# Initialize OpenAI Client
 client = openai.OpenAI(api_key=openai_api_key)
 
 app = Flask(__name__)
@@ -24,24 +25,24 @@ def analyze():
     data = request.get_json()
     
     if not data or "data" not in data:
-        print("❌ No data received in AI Service")
-        return jsonify({"error": "❌ No data received"}), 400
+        print("No data received in AI Service")
+        return jsonify({"error": "No data received"}), 400
     
     try:
         transactions = data["data"]
         if not transactions:
-            return jsonify({"error": "❌ No transactions provided"}), 400
+            return jsonify({"error": "No transactions provided"}), 400
 
-        print("✅ AI Service received JSON data and converted it to structured format")
+        print("AI Service received JSON data and converted it to structured format")
         
-        # ✅ Categorize expenses
+        # Categorize expenses
         essential_keywords = ["food", "rent", "utilities", "groceries", "transport", "medical"]
         for transaction in transactions:
             transaction["category"] = "Essential" if any(
                 keyword in transaction["Expense Type"].lower() for keyword in essential_keywords
             ) else "Non-Essential"
         
-        # ✅ Summarize spending
+        # Summarize spending
         total_non_essential = sum(float(tx["Amount"]) for tx in transactions if tx["category"] == "Non-Essential")
         
         essential_expenses = "\n".join(
@@ -51,9 +52,9 @@ def analyze():
             f"- {tx['Expense Name']} (${tx['Amount']})" for tx in transactions if tx["category"] == "Non-Essential"
         )
         
-        print("✅ AI Service prepared expense summary")
+        print("AI Service prepared expense summary")
         
-        # ✅ OpenAI Prompt
+        # OpenAI Prompt
         prompt = f"""
         Here is a list of transactions categorized as essential and non-essential:
 
@@ -90,13 +91,13 @@ def analyze():
             messages=[{"role": "user", "content": prompt}]
         )
         
-        print("✅ AI Service successfully generated response")
+        print("AI Service successfully generated response")
         
         return jsonify({"analysis": response.choices[0].message.content})
     
     except Exception as e:
-        print(f"❌ Error in AI Service: {str(e)}")
-        return jsonify({"error": f"❌ Error processing data: {str(e)}"}), 500
+        print(f"Error in AI Service: {str(e)}")
+        return jsonify({"error": f"Error processing data: {str(e)}"}), 500
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5001)
