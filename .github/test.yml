@@ -1,0 +1,41 @@
+name: Run Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Run Tests for Services
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'  # Specify your Python version
+
+      - name: Install Dependencies for upload_service
+        run: |
+          pip install -r upload_service/requirements.txt
+
+      - name: Install Dependencies for ai_service
+        run: |
+          pip install -r ai_service/requirements.txt
+
+      - name: Run Tests for upload_service
+        working-directory: upload_service
+        run: |
+          python -m unittest upload_service_test.py
+
+      - name: Run Tests for ai_service
+        working-directory: ai_service
+        run: |
+          python -m unittest ai_service_test.py
