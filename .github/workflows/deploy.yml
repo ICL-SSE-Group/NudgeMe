@@ -1,4 +1,4 @@
-name: Deploy to Google Cloud Run
+name: Test and Deploy to Google Cloud Run
 
 on:
   push:
@@ -6,56 +6,92 @@ on:
       - main
 
 jobs:
-  deploy:
-    name: Deploy to Cloud Run
+  test:
+    name: Run Tests for Services
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-    - name: Authenticate with Google Cloud
-      uses: google-github-actions/auth@v2
-      with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
 
-    - name: Configure gcloud CLI
-      run: |
-        gcloud config set project nudgeme-450123
-        gcloud auth configure-docker
+      - name: Install Dependencies for upload_service
+        run: |
+          pip install -r upload_service/requirements.txt
 
-    # --- BUILD & PUSH AI SERVICE ---
-    - name: Build and Push AI Service
-      run: |
-        cd ai_service
-        docker build -t gcr.io/nudgeme-450123/ai-service:latest .
-        docker push gcr.io/nudgeme-450123/ai-service:latest
+      - name: Install Dependencies for ai_service
+        run: |
+          pip install -r ai_service/requirements.txt
 
-    # --- BUILD & PUSH UPLOAD SERVICE ---
-    - name: Build and Push Upload Service
-      run: |
-        cd upload_service
-        docker build -t gcr.io/nudgeme-450123/upload-service:latest .
-        docker push gcr.io/nudgeme-450123/upload-service:latest
+      - name: Run Tests for upload_service
+        working-directory: upload_service
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # Pass the secret
+        run: |
+          PYTHONPATH=./ python -m unittest upload_service_test.py
 
-    # --- DEPLOY SERVICES TO CLOUD RUN ---
-    - name: Deploy AI Service to Cloud Run
-      run: |
-        gcloud run deploy ai-service \
-          --image gcr.io/nudgeme-450123/ai-service:latest \
-          --platform managed \
-          --region us-central1 \
-          --allow-unauthenticated
+      - name: Run Tests for ai_service
+        working-directory: ai_service
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # Pass the secret
+        run: |
+          PYTHONPATH=./ python -m unittest ai_service_test.py
 
-    - name: Deploy Upload Service to Cloud Run
-      run: |
-        gcloud run deploy upload-service \
-          --image gcr.io/nudgeme-450123/upload-service:latest \
-          --platform managed \
-          --region us-central1 \
-          --allow-unauthenticated
+  deploy:
+    name: Deploy to Cloud Run
+    runs-on: ubuntu-latest
+    needs: test  # Ensure deploy runs only if tests pass
 
-    # --- VERIFY DEPLOYMENTS ---
-    - name: Verify Deployments
-      run: |
-        gcloud run services list --platform managed --region us-central1
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Configure gcloud CLI
+        run: |
+          gcloud config set project nudgeme-450123
+          gcloud auth configure-docker
+
+      # --- BUILD & PUSH AI SERVICE ---
+      - name: Build and Push AI Service
+        run: |
+          cd ai_service
+          docker build -t gcr.io/nudgeme-450123/ai-service:latest .
+          docker push gcr.io/nudgeme-450123/ai-service:latest
+
+      # --- BUILD & PUSH UPLOAD SERVICE ---
+      - name: Build and Push Upload Service
+        run: |
+          cd upload_service
+          docker build -t gcr.io/nudgeme-450123/upload-service:latest .
+          docker push gcr.io/nudgeme-450123/upload-service:latest
+
+      # --- DEPLOY SERVICES TO CLOUD RUN ---
+      - name: Deploy AI Service to Cloud Run
+        run: |
+          gcloud run deploy ai-service \
+            --image gcr.io/nudgeme-450123/ai-service:latest \
+            --platform managed \
+            --region us-central1 \
+            --allow-unauthenticated
+
+      - name: Deploy Upload Service to Cloud Run
+        run: |
+          gcloud run deploy upload-service \
+            --image gcr.io/nudgeme-450123/upload-service:latest \
+            --platform managed \
+            --region us-central1 \
+            --allow-unauthenticated
+
+      # --- VERIFY DEPLOYMENTS ---
+      - name: Verify Deployments
+        run: |
+          gcloud run services list --platform managed --region us-central1
