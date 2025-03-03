@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Adjust this import to match your actual path structure
 # This assumes upload_service.py is in the same directory as this test file
-from upload_servive import app
+from upload_service import app
 
 class TestUploadService(unittest.TestCase):
     def setUp(self):
