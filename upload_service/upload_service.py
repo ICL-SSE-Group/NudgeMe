@@ -48,7 +48,7 @@ def login():
                 conn.commit()  # Commit new user creation
 
     session["user_id"] = user_id  # Store unique user ID in session
-    flash("✅ Login successful!")
+    flash("Login successful!")
     return redirect("/")
 
 
@@ -56,7 +56,7 @@ def login():
 def logout():
     """Logs out the user and clears session."""
     session.clear()
-    flash("✅ You have been logged out.")
+    flash("You have been logged out.")
     return redirect("/login")
 
 # ------------------  FILE UPLOAD & DASHBOARD ------------------
@@ -78,12 +78,12 @@ def upload_file():
     user_id = session["user_id"]
 
     if not file:
-        flash("❌ No file uploaded")
+        flash("No file uploaded")
         return redirect(request.url)
 
     # Ensure the uploaded file has a proper CSV extension
     if not file.filename.endswith(".csv"):
-        flash("❌ Invalid file format. Please upload a CSV file.")
+        flash("Invalid file format. Please upload a CSV file.")
         return redirect(request.url)
 
     # Save the file temporarily
@@ -101,7 +101,7 @@ def upload_file():
                     try:
                         amount = float(row["Amount"].replace("$", "").strip())  # Convert amount to float
                     except ValueError:
-                        flash(f"❌ Invalid amount format: {row['Amount']}")
+                        flash(f"Invalid amount format: {row['Amount']}")
                         return redirect(request.url)
 
                     try:
@@ -125,7 +125,7 @@ def upload_file():
                 (user_id, file.filename, file_path),
             )
 
-    flash("✅ File uploaded and transactions stored in database.")
+    flash("File uploaded and transactions stored in database.")
     return redirect("/dashboard")
 
 
@@ -260,9 +260,9 @@ def delete_file(filename):
                 # Check if the file exists before attempting to delete it
                 if os.path.exists(file_path):
                     os.remove(file_path)
-                    print(f"✅ Debug: File {file_path} successfully deleted.")
+                    print(f"Debug: File {file_path} successfully deleted.")
                 else:
-                    print(f"❌ Debug: File {file_path} does NOT exist on server.")
+                    print(f"Debug: File {file_path} does NOT exist on server.")
 
                 # Remove database record
                 cur.execute(
@@ -270,7 +270,7 @@ def delete_file(filename):
                     (user_id, filename),
                 )
                 conn.commit()
-                print(f"✅ Debug: Database record for {filename} deleted.")
+                print(f"Debug: Database record for {filename} deleted.")
 
         return jsonify({"success": True}), 200
     
